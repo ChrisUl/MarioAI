@@ -41,7 +41,6 @@ public abstract class MarioAgenNtBase implements IAgent {
 
 		@Override
 		public void debugDraw(VisualizationComponent vis, LevelScene level,	IEnvironment env, Graphics g) {
-			System.out.println("DEBUG MODE ON");
 			if (hijacked) {
 				MarioInput ai = actionSelectionAI();
 				if (ai != null) {
@@ -175,6 +174,10 @@ public abstract class MarioAgenNtBase implements IAgent {
     @Override
     public final void receiveReward(float intermediateReward) {
         baseApi.receiveReward(intermediateReward);
+    }
+    
+    public Environment getEnvironment() {
+    	return new Environment(getTiles(), getEntities(), getLevelScene().mario);
     }
     
 }

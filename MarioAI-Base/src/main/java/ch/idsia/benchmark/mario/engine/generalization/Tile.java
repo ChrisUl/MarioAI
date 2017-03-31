@@ -1,5 +1,8 @@
 package ch.idsia.benchmark.mario.engine.generalization;
 
+/**
+ * Environment tiles not including enemies. 
+ */
 public enum Tile {
 	/**
 	 * ZLevel: 0 only 
@@ -149,6 +152,17 @@ public enum Tile {
 
 	public String getDebug() {
 		return debug;
+	}
+	
+	@Override
+	public String toString() {
+		System.out.println("TO STIRNG: " + this.name());
+		return this.name();
+		
+	}
+
+	public TileType getTileType() {
+		return Enum.valueOf(TileType.class, this.toString());
 	}
 	
 }
