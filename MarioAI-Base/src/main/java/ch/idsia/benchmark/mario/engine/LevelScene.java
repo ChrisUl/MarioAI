@@ -602,13 +602,14 @@ public final class LevelScene implements SpriteContext, Cloneable {
 	}
 
 	void setBonusPoints(final int bonusPoints) {
-		if (!isClone)
+		if (!isClone) {
 			this.bonusPoints = bonusPoints;
+		}
 	}
 
-	void appendBonusPoints(final int superPunti) {
+	void appendBonusPoints(final int bonusPoints) {
 		if (!isClone) {
-			bonusPoints += superPunti;
+			this.bonusPoints += bonusPoints;
 		}
 	}
 
