@@ -29,13 +29,15 @@ package ch.idsia.agents.controllers;
 
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import ch.idsia.agents.AgentOptions;
 import ch.idsia.agents.IAgent;
+import ch.idsia.benchmark.mario.engine.LevelScene;
 import ch.idsia.benchmark.mario.engine.Replayer;
 import ch.idsia.benchmark.mario.engine.input.MarioInput;
 import ch.idsia.benchmark.mario.environments.IEnvironment;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Created by IntelliJ IDEA. 
@@ -54,6 +56,7 @@ public class ReplayAgent implements IAgent {
 	private Replayer replayer;
 	private MarioInput keys;
 	private String name;
+	private LevelScene levelScene;
 
 	public ReplayAgent(String name) {
 		setName("Replay<" + name + ">");
@@ -95,6 +98,15 @@ public class ReplayAgent implements IAgent {
 
 	@Override
 	public void receiveReward(final float intermediateReward) {
+	}
+
+	public void setLevelScene(LevelScene levelScene) {
+		this.levelScene = levelScene;
+	}
+
+	@Override
+	public int getIntermediateReward() {
+		return levelScene.getBonusPoints();
 	}
 	
 }

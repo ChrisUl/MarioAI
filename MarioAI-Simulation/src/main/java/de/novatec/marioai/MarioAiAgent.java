@@ -89,6 +89,12 @@ public abstract class MarioAiAgent implements IAgent, KeyListener {
 				}
 			}
 		}
+
+		
+		@Override
+		public int getIntermediateReward() {
+			return this.levelScene.getBonusPoints();
+		}
 	};
 
 	/**
@@ -455,6 +461,11 @@ public abstract class MarioAiAgent implements IAgent, KeyListener {
 	@Override
 	public final MarioInput actionSelection() {
 		return baseApi.actionSelectionAI();
+	}
+
+	@Override
+	public int getIntermediateReward() {
+		return this.baseApi.getLevelScene().getBonusPoints();
 	}
 
 	/**

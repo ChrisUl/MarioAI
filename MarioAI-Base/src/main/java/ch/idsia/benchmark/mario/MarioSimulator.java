@@ -107,6 +107,7 @@ public class MarioSimulator {
 			agent.receiveReward(environment.getIntermediateReward());
 		}
 		
+		log.debug("[MarioSimulator] Current IntermediateReward: " + agent.getIntermediateReward());
 		log.debug("[MarioSimulator] SIMULATION ENDED!");
 		
 		EvaluationInfo result = environment.getEvaluationInfo();

@@ -3,9 +3,11 @@ package de.novatec.marioai.agents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ch.idsia.agents.IAgent;
 import ch.idsia.benchmark.mario.engine.input.MarioInput;
-import de.novatec.marioai.Environment;
 import de.novatec.marioai.MarioAiAgent;
+import de.novatec.marioai.simulation.LevelConfig;
+import de.novatec.marioai.simulation.MarioAiRunner;
 
 /**
  * Agent that sprints forward, jumps and shoots.
@@ -18,43 +20,17 @@ public class AGENT_TEST extends MarioAiAgent {
 
 	private static Logger log = LoggerFactory.getLogger(AGENT_TEST.class);
 
-	private Environment getEnvironment() {
-		return new Environment(getTiles(), getEntities(), getLevelScene().mario);
-	}
-
-	private boolean enemyAhead() {
-
-		Environment environment = getEnvironment();
-		return environment.getTileRelativeToMario(1, 0).isEnemy() || environment.getTileRelativeToMario(1, -1).isEnemy()
-				|| environment.getTileRelativeToMario(2, 0).isEnemy()
-				|| environment.getTileRelativeToMario(2, -1).isEnemy()
-				|| environment.getTileRelativeToMario(3, 0).isEnemy()
-				|| environment.getTileRelativeToMario(2, -1).isEnemy();
-	}
-
-	private boolean brickAhead() {
-		Environment environment = getEnvironment();
-		return environment.getTileRelativeToMario(1, 0).isBrick() || environment.getTileRelativeToMario(1, -1).isBrick()
-				|| environment.getTileRelativeToMario(2, 0).isBrick()
-				|| environment.getTileRelativeToMario(2, -1).isBrick()
-				|| environment.getTileRelativeToMario(3, 0).isBrick()
-				|| environment.getTileRelativeToMario(2, -1).isBrick();
-	}
-
 	@Override
 	public MarioInput doAiLogic() {
 		// ALWAYS RUN RIGHT
 		getMarioControl().runRight();
 
-		// ALWAYS SPRINT
-		getMarioControl().sprint();
-
-		// ALWAYS SHOOT (if able ... max 2 fireballs at once!)
+		// ALWAYS SHOOT
 		getMarioControl().shoot();
 
 		// ENEMY || BRICK AHEAD => JUMP
 		// WARNING: do not press JUMP if UNABLE TO JUMP!
-		if (enemyAhead() || brickAhead())
+		if (isEnemyAhead() || isBrickAhead())
 			getMarioControl().jump();
 
 		// If in the air => keep JUMPing
@@ -67,5 +43,10 @@ public class AGENT_TEST extends MarioAiAgent {
 	@Override
 	public String getName() {
 		return "AGENT_TEST";
+	}
+
+	public static void main(String[] args) {
+		IAgent agent = new AGENT_TEST();
+		MarioAiRunner.run(agent, LevelConfig.LEVEL_3, false, false);
 	}
 }

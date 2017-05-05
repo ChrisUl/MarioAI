@@ -29,6 +29,7 @@ package ch.idsia.agents.controllers;
 
 import ch.idsia.agents.AgentOptions;
 import ch.idsia.agents.IAgent;
+import ch.idsia.benchmark.mario.engine.LevelScene;
 import ch.idsia.benchmark.mario.engine.input.MarioInput;
 import ch.idsia.benchmark.mario.environments.IEnvironment;
 
@@ -47,6 +48,8 @@ import ch.idsia.benchmark.mario.environments.IEnvironment;
 public abstract class MarioAgentBase implements IAgent {
 	
 	protected String name;
+
+	protected LevelScene levelScene;
 
 	public MarioAgentBase(String agentName) {
 		this.name = agentName;
@@ -72,4 +75,13 @@ public abstract class MarioAgentBase implements IAgent {
 	public void receiveReward(float intermediateReward) {
 	}
 	
+	public void setLevelScene(LevelScene levelScene) {
+		this.levelScene = levelScene;
+	}
+
+	@Override
+	public int getIntermediateReward() {
+		return this.levelScene.getBonusPoints();
+	}
+
 }

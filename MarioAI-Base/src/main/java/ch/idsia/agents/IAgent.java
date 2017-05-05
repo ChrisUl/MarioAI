@@ -28,7 +28,6 @@
 package ch.idsia.agents;
 
 import ch.idsia.benchmark.mario.engine.input.MarioInput;
-import ch.idsia.benchmark.mario.engine.input.MarioKey;
 import ch.idsia.benchmark.mario.environments.IEnvironment;
 
 /**
@@ -78,5 +77,11 @@ public interface IAgent {
 	 * @param intermediateReward
 	 */
 	void receiveReward(float intermediateReward);
+
+	/**
+	 * Gets the currently accumulated 'intermediateReward's so-far.
+	 * @return the currently accumulated 'intermediateReward's so-far.
+	 */
+	public int getIntermediateReward();
 
 }
