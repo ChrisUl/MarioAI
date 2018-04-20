@@ -3,6 +3,7 @@ package ch.idsia.tools;
 import java.awt.Point;
 
 import ch.idsia.ai.agents.Agent;
+import ch.idsia.ai.tasks.Task;
 import ch.idsia.mario.engine.level.Level.LEVEL_TYPES;
 import ch.idsia.mario.engine.sprites.Mario.MODE;
 import de.novatec.marioai.tools.LevelConfig;
@@ -23,15 +24,11 @@ public class RunnerOptions {
 	
 	private int timeLimit=200;
 	
-	private boolean timer=true;  //timer should be visible
-	
 	private boolean paused=false;
 	
 	private boolean labels=false;
 	
 	private boolean debugView=false;
-	
-	private boolean marioAlwaysCentered=false;
 	
 	private boolean powerRestauration=false;
 	
@@ -41,17 +38,18 @@ public class RunnerOptions {
 	
 	private boolean exitWhenFinished=false;
 	
-	private boolean viewAlwaysOnTop=false;
-	
 	private LevelConfig config;
+	
+	private final Task task;
 	
 	private int trials=0,maxTrials=1; //number of trials
 	
 	private int ZLevelEnemies=1, ZLevelMap=1;
 
-	public RunnerOptions(Agent agent,LevelConfig config) {
+	public RunnerOptions(Agent agent,LevelConfig config, Task task) {
 		this.config=config;		
 		this.agent=agent;
+		this.task=task;
 	}
 	
 	public RunnerOptions(RunnerOptions toCopy) {
@@ -62,20 +60,39 @@ public class RunnerOptions {
 		this.FPS=toCopy.FPS;
 		this.viewable=toCopy.isViewable();
 		this.timeLimit=toCopy.getTimeLimit();
-		this.timer=toCopy.isTimer();
 		this.paused=toCopy.isPaused();
 		this.powerRestauration=toCopy.isPowerRestauration();
 		this.marioStartMode=toCopy.getMarioStartMode();
 		this.marioInvulnerable=toCopy.isMarioInvulnerable();
 		this.exitWhenFinished=toCopy.isExitWhenFinished();
-		this.viewAlwaysOnTop=toCopy.isViewAlwaysOnTop();
 		this.trials=toCopy.trials;
 		this.maxTrials=toCopy.getMaxTrials();
 		this.ZLevelEnemies=toCopy.getZLevelEnemies();
 		this.ZLevelMap=toCopy.getZLevelMap();
-		this.viewLocation=toCopy.getViewLocation();
 		this.config=toCopy.config;
 		this.debugView=toCopy.debugView;
+		this.task=toCopy.task;
+	}
+	
+	public RunnerOptions getCopyWithNewAgent(Agent agent) {
+		RunnerOptions res= new RunnerOptions(agent, this.config, this.task);
+		res.windowHeigth=this.getWindowHeigth();
+		res.windowWidth=this.getWindowWidth();
+		res.FPS=this.FPS;
+		res.viewable=this.isViewable();
+		res.timeLimit=this.getTimeLimit();
+		res.paused=this.isPaused();
+		res.powerRestauration=this.isPowerRestauration();
+		res.marioStartMode=this.getMarioStartMode();
+		res.marioInvulnerable=this.isMarioInvulnerable();
+		res.exitWhenFinished=this.isExitWhenFinished();
+		res.trials=this.trials;
+		res.maxTrials=this.getMaxTrials();
+		res.ZLevelEnemies=this.getZLevelEnemies();
+		res.ZLevelMap=this.getZLevelMap();
+		res.debugView=this.debugView;
+		
+		return res;
 	}
 	
 	public Agent getAgent() {
@@ -118,16 +135,9 @@ public class RunnerOptions {
 		return timeLimit;
 	}
 
+	@SuppressWarnings("unused")
 	private void setTimeLimit(int timeLimit) { // shouldn't be changeable
 		this.timeLimit = timeLimit;
-	}
-
-	public boolean isTimer() {
-		return timer;
-	}
-
-	public void setTimer(boolean timer) {
-		this.timer = timer;
 	}
 
 	public boolean isPaused() {
@@ -168,14 +178,6 @@ public class RunnerOptions {
 
 	public void setExitWhenFinished(boolean exitWhenFinished) {
 		this.exitWhenFinished = exitWhenFinished;
-	}
-
-	public boolean isViewAlwaysOnTop() {
-		return viewAlwaysOnTop;
-	}
-
-	public void setViewAlwaysOnTop(boolean viewAlwaysOnTop) {
-		this.viewAlwaysOnTop = viewAlwaysOnTop;
 	}
 
 	public int getTrials() {
@@ -226,14 +228,6 @@ public class RunnerOptions {
 		this.maxTrials = maxTrials;
 	}
 
-	public boolean isMarioAlwaysCentered() {
-		return marioAlwaysCentered;
-	}
-
-	public void setMarioAlwaysCentered(boolean marioAlwaysCentered) {
-		this.marioAlwaysCentered = marioAlwaysCentered;
-	}
-
 	public boolean isLabels() {
 		return labels;
 	}
@@ -266,6 +260,8 @@ public class RunnerOptions {
 		this.debugView = debugView;
 	}
 
-	
+	public Task getTask() {
+		return task;
+	}
 	
 }

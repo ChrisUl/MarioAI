@@ -1,13 +1,29 @@
 package ch.idsia.mario.engine;
 
+import java.awt.Color;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.GraphicsConfiguration;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyListener;
+import java.awt.image.VolatileImage;
+import java.text.DecimalFormat;
+import java.util.List;
+import java.util.Map;
+
+import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
+
 import ch.idsia.ai.agents.Agent;
+import ch.idsia.ai.tasks.Task;
 import ch.idsia.mario.engine.level.BgLevelGenerator;
 import ch.idsia.mario.engine.level.Level;
 import ch.idsia.mario.engine.sprites.Mario;
 import ch.idsia.mario.engine.sprites.Mario.STATUS;
 import ch.idsia.mario.environments.Environment;
 import ch.idsia.tools.EvaluationInfo;
-import ch.idsia.tools.KeyboardInterpreter;
+import ch.idsia.tools.MainFrame;
 import ch.idsia.tools.RunnerOptions;
 import de.novatec.mario.engine.generalization.Coordinates;
 import de.novatec.mario.engine.generalization.Entity;
@@ -15,18 +31,7 @@ import de.novatec.mario.engine.generalization.Tile;
 import de.novatec.marioai.agents.HumanKeyboardAgent;
 import de.novatec.marioai.tools.MarioNtAgent;
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.KeyListener;
-import java.awt.image.VolatileImage;
-import java.text.DecimalFormat;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-
-public class MarioComponent extends JComponent implements Callable<EvaluationInfo>, FocusListener, Environment {
+public class MarioComponent extends JComponent implements Environment {
     private static final long serialVersionUID = 790878775993203817L;
 
     private boolean running = false;
@@ -48,23 +53,26 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
     
     private static final int GENERALIZATION_ENEMIES = 1;
     private static final int GENERALIZATION_LEVELSCENE = 1;
+    private static final int maxFPS=100;
     private static final DecimalFormat df = new DecimalFormat("0.0");
     private static final DecimalFormat df2 = new DecimalFormat("00");
 
     private Agent swapper=new HumanKeyboardAgent(), actual;
     private KeyListener prevHumanKeyBoardAgent;
     private LevelScene levelScene = null;
+    
+    Graphics lastG,lastOg;
+    VolatileImage lastImage;
  
     //--- Constructor
-    public MarioComponent(int width, int height) {
+    public MarioComponent(int width, int height, RunnerOptions rOptions) {
        
+    	this.rOptions=rOptions;
         this.setFocusable(true);
         this.setEnabled(true);
 
         Dimension size = new Dimension(width, height);
         setPreferredSize(size);
-        
-        new KeyboardInterpreter(this);
     }
     
     //--- Copy Constructor
@@ -86,6 +94,7 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 		this.paused=toCopy.paused;
 		this.setpaused=toCopy.setpaused;
 		this.performTick=toCopy.performTick;
+		this.wasHijacked=toCopy.wasHijacked;
 		
 		this.delay = toCopy.delay;
 		
@@ -94,12 +103,16 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 		this.debugView=toCopy.debugView;
 		this.viewable=toCopy.viewable;
 		
+		this.layer=new LevelRenderer(alreadyCopied.getLevel(), toCopy.layer);
+		this.bgLayer=toCopy.bgLayer;
+		this.spriteRenderer=new SpriteRenderer(alreadyCopied.getSprites());
+		
 		for(KeyListener listener:toCopy.getKeyListeners()) this.registerKeyboardListener(listener);
     }
 
     //--- FPS
 	public void adjustFPS() { //MAKING MARIO FASTER! SMALLER DELAY=FASTER RUNNING
-    	if(rOptions.isViewable()) delay = (rOptions.getFPS() > 0) ? (rOptions.getFPS() >= RunnerOptions.getInfinitefps()) ? 0 : (1000/rOptions.getFPS()) : 100;
+    	if(rOptions.isViewable()) delay = (rOptions.getFPS() > 0) ? (rOptions.getFPS() >= maxFPS) ? 0 : (1000/rOptions.getFPS()) : maxFPS;
     	else delay=0;
     }
 
@@ -117,37 +130,26 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
         }
     }
 
-    //--- Callable
     public void stop() {
         running = false;
     }
-    
-    @Override
-	public EvaluationInfo call() throws Exception {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-   
     
     private void checkPaused() {
     	if(levelScene.getMarioStatus()==STATUS.RUNNING)	this.paused=setpaused;
     	else this.paused=true;
     }
 
-    public EvaluationInfo run1() {
+    public EvaluationInfo run() {
     	
         running = true;
         adjustFPS();
-        EvaluationInfo evaluationInfo = new EvaluationInfo();
+        EvaluationInfo evaluationInfo = new EvaluationInfo(rOptions.getTask());
 
         VolatileImage image = null;
         Graphics g = null;
         Graphics og = null;
 
         image = createVolatileImage(320, 240);
-
-        addFocusListener(this);
 
         long startTime = System.currentTimeMillis();  // Remember the starting time
         STATUS marioStatus = STATUS.RUNNING;
@@ -156,9 +158,12 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 
         while (running||!readyToExit) {
         	boolean tmpPerformTick=performTick;
-        	checkPaused();
-        	checkHijacked();
+        	
 
+        	lastG=g;
+        	lastOg=og;
+        	lastImage=image;
+        	
         	g=getGraphics();
         	og=image.getGraphics();
             if(!paused||tmpPerformTick)levelScene.tick();
@@ -168,6 +173,8 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
                 render(og);
                 checkGameStatus(og);
             }
+            checkPaused();
+        	checkHijacked();
             boolean[] action = {false,false,false,false,false};
 
             	if(!paused||tmpPerformTick) action = getAgent().getAction(this);
@@ -192,7 +199,7 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
             if(!paused||tmpPerformTick) levelScene.setMarioKeys(action);
 
             if (rOptions.isViewable()) {
-                if(running) {
+                if(running&&!readyToExit) {
                 	 drawProgress(og);
                 	 drawInfos(og);
                 	 String msg = "Agent: " + getAgent().getName();
@@ -223,7 +230,6 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
                 // Win or Die without renderer!! independently.
                 marioStatus =  levelScene.getMarioStatus();
                 if (marioStatus != STATUS.RUNNING) break;
-                
             }
            
             // Delay depending on how far we are behind.
@@ -242,7 +248,14 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
         
         //--- Show results on end screen
         if (rOptions.isViewable()) {
-        	drawEndScreen(g,og,image);
+        	getParent().setBackground(Color.BLACK);
+        	SwingUtilities.invokeLater(new Runnable() {
+				
+				@Override
+				public void run() {
+		        	redrawEndScreen();
+				}
+			});
         }
         
         //ADD INFO TO EVALUATION INFO
@@ -257,6 +270,7 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
         evaluationInfo.timeSpentOnLevel = levelScene.getStartTime();
         evaluationInfo.timeLeft = levelScene.getTimeLeft();
         evaluationInfo.totalTimeGiven = levelScene.getTotalTime();
+        evaluationInfo.setExactTimeLeft(levelScene.getExactTimeLeft());
         evaluationInfo.numberOfGainedCoins = levelScene.getMarioCoins();
         evaluationInfo.totalNumberOfCoins   = levelScene.getTotalCoins() ; 
         evaluationInfo.totalActionsPerfomed = totalActionsPerfomed; // Counted during the play/simulation process
@@ -277,7 +291,6 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
     }
     
    //--- Rendering
-    
     private void render(Graphics g) {
     	int xCam=(int)levelScene.getxCam();
     	int yCam=(int)levelScene.getyCam();
@@ -312,7 +325,7 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 		}
 
 		if (levelScene.getMarioStatus()==STATUS.WIN) {
-			setpaused=true;
+			setPaused(true);
 			renderBlackout(g, (int)levelScene.getMarioX() - xCam, (int)levelScene.getMarioY() - yCam, (int) (blackoutTimer));
 			levelWon();
 			if ((int)blackoutTimer <= 0){
@@ -322,7 +335,7 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 		}
 		
 		if (levelScene.getTimeLeft()<=0||levelScene.getMarioStatus()==STATUS.LOSE) { 
-			setpaused=true;
+			setPaused(true);
 			renderBlackout(g, (int)levelScene.getMarioX() - xCam, (int)levelScene.getMarioY() - yCam, (int) (blackoutTimer));
 			levelFailed();
 
@@ -421,19 +434,30 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 		drawStringDropShadow(g, progress_str, 0, 28, 2);
 	}
     
+	public void redrawEndScreen() {
+		if(levelScene.getMarioStatus()==STATUS.WIN||levelScene.getMarioStatus()==STATUS.LOSE) {
+			drawEndScreen(lastG, lastOg, lastImage);
+		}
+	}
     private void drawEndScreen(Graphics g, Graphics og, VolatileImage image) {
         final int start=4;
         int actualRow=3;
         drawStringDropShadow(og, "Results: ", 1, actualRow++, 1);
         drawStringDropShadow(og, "       Agent: "+rOptions.getAgent().getName(), start, actualRow++, 2);
-        if(rOptions.getAgent().getClass().getSimpleName().length()<18)drawStringDropShadow(og, "     of Type: "+rOptions.getAgent().getClass().getSimpleName()+".class", start, actualRow++, 2);
+        if(rOptions.getAgent().getClass().getSimpleName().length()<18) {
+        	drawStringDropShadow(og, "     of Type: "+rOptions.getAgent().getClass().getSimpleName()+".class", start, actualRow++, 2);
+        	actualRow++;
+        }
         else { 
         	drawStringDropShadow(og, "     of Type: ", start, actualRow++, 2);
         	drawStringDropShadow(og,"   "+getAgent().getClass().getSimpleName()+".class", start, actualRow++, 2);
         }
         actualRow++;
         drawStringDropShadow(og, "Mario Status: "+levelScene.getMarioStatus(), start, actualRow, 1);
-        if(wasHijacked) drawStringDropShadow(og,  "(HIJACKED!)", start+19, actualRow++, 1);
+        if(wasHijacked) {
+        	drawStringDropShadow(og,  "(HIJACKED!)", start+19, actualRow++, 1);
+        }
+        else actualRow++;
         actualRow++;
         drawStringDropShadow(og, "       Level: "+levelScene.getLevelSeed(), start, actualRow++, 4);
         drawStringDropShadow(og, " Distance to", start,actualRow++,4);
@@ -459,11 +483,11 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
         drawStringDropShadow(og, "  Flowers: "+levelScene.getMarioGainedFowers(), start+19, actualRow++, 6);
         
         if(levelScene.getKilledCreaturesByFireBall()>0) drawStringDropShadow(og, "    by  fire: "+levelScene.getKilledCreaturesByFireBall()+" ("+(df.format((double)levelScene.getKilledCreaturesByFireBall()/(double)levelScene.getKilledCreaturesTotal()*100))+"%)", start-6, actualRow++, 6);
-        else drawStringDropShadow(og, "     by fire: 0",start-6,actualRow,6);
+        else drawStringDropShadow(og, "    by  fire: 0",start-6,actualRow++,6);
         actualRow++;       
         
         drawStringDropShadow(og, "----------------------------------", start-2, actualRow++, 1);
-        drawStringDropShadow(og, "Score: "+(int)(levelScene.getScore()), start-2, actualRow++, 1);
+        drawStringDropShadow(og, "Score: "+(int)(levelScene.getScore())+" ("+rOptions.getTask().getName()+")", start-2, actualRow++, 1);
         g.drawImage(image, 0, 0, getSize().width, getSize().height, null);
     }
 
@@ -500,11 +524,14 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
     }
     
     public void swapAgent() {
+    	if(rOptions.getAgent().getClass().equals(HumanKeyboardAgent.class)) return;
+    	this.setPaused(true);
     	this.wasHijacked=true;
     	this.sethijacked=!hijacked;
     }
     
     public void checkHijacked() {
+    	if(rOptions.getAgent().getClass().equals(HumanKeyboardAgent.class)) return;
     	if(levelScene.getMarioStatus()!=STATUS.RUNNING) return;
     	Agent tmp;
     	if(sethijacked!=hijacked) {
@@ -593,15 +620,13 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 	}
 
 	@Override
-	public void setRunnerOptions(RunnerOptions rOptions) {
-		this.rOptions=rOptions;
+	public void setRunnerOptions() {
 		this.viewable=rOptions.isViewable();
 		this.debugView=rOptions.isDebugView();
 		rOptions.getAgent().reset();
 		adjustFPS();
 		 
 		actual=rOptions.getAgent();
-		registerKeyListenerAgent(rOptions.getAgent());
 		
 		startLevel(rOptions.getLevelSeed(), rOptions.getDifficulty(), rOptions.getLevelType(), rOptions.getLevelLength(), rOptions.getTimeLimit());
 	}
@@ -610,18 +635,38 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 		return actual;
 	}
 	
+	Task getTask(){
+		if(rOptions!=null) return rOptions.getTask();
+		return null;
+	}
+	
 	@Override
 	public void registerKeyboardListener(KeyListener listener) {
 		this.addKeyListener(listener);
 	}
 	
+	@Override
+	public void removeLastKeyboardListener() {
+		 if (prevHumanKeyBoardAgent != null) { 
+			 getTopLevelAncestor().removeKeyListener(prevHumanKeyBoardAgent);
+		 }
+	}
+	
+	@Override
+	public void addLastKeyboardListener() {
+		if (prevHumanKeyBoardAgent != null) {
+			getTopLevelAncestor().addKeyListener(prevHumanKeyBoardAgent);
+		 }
+	}
+	
   	private void registerKeyListenerAgent(Agent agent) {
         if (agent instanceof KeyListener) {
         	
-            if (prevHumanKeyBoardAgent != null) this.removeKeyListener(prevHumanKeyBoardAgent);
+            if (prevHumanKeyBoardAgent != null) getTopLevelAncestor().removeKeyListener(prevHumanKeyBoardAgent);
             
             this.prevHumanKeyBoardAgent = (KeyListener) agent;
-            registerKeyboardListener(this.prevHumanKeyBoardAgent);;
+            getTopLevelAncestor().addKeyListener(this.prevHumanKeyBoardAgent);
+
         }
     }
 
@@ -633,6 +678,11 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 	@Override
 	public void togglePaused() {
 		this.setpaused=!setpaused;
+	}
+	
+	@Override
+	public boolean isPaused() {
+		return paused;
 	}
 	
 	@Override
@@ -706,6 +756,7 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 
 	@Override
 	public void showMarioViewAsAscii() {
+		setPaused(true);
 		byte[][] tmp=getCompleteObservation();
 		System.out.println(" --------------------------------Marios Receptive Field:--------------------------------");
     	for(int i=0;i<tmp.length;i++) {
@@ -721,7 +772,6 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
     	}
     	System.out.println(" ----------------------------------------------------------------------------------------");
     	System.out.println();
-		
 	}
 	
 	//--- Screen Size
@@ -742,18 +792,29 @@ public class MarioComponent extends JComponent implements Callable<EvaluationInf
 		if(width<320) width=320;
 		if(height<240) height=240;
 		
-		if(Toolkit.getDefaultToolkit().getScreenSize().width<width||Toolkit.getDefaultToolkit().getScreenSize().height<height) return;
-		
-		
-		Dimension d=new Dimension(width, height);
-		this.setPreferredSize(d);
-
 		this.revalidate();
-		
-		Container parent=getParent();
-		while(parent.getParent()!=null) {
-			parent=parent.getParent();
+		Container parent=getTopLevelAncestor();
+		if(parent instanceof MainFrame) {
+			Dimension d=new Dimension(width, height);
+			((MainFrame)parent).resizeAll(d);
 		}
-		if(parent instanceof JFrame) ((JFrame)parent).pack();
+	}
+
+	@Override
+	public void registerActualAgent() {
+		if(rOptions.getAgent()!=null&&rOptions.getAgent() instanceof KeyListener) {
+			getTopLevelAncestor().addKeyListener((KeyListener)rOptions.getAgent());
+		}
+		
+	}
+
+	@Override
+	public void removeActualAgent() {
+		if(rOptions.getAgent()!=null&&rOptions.getAgent() instanceof KeyListener) {
+			getTopLevelAncestor().removeKeyListener((KeyListener)rOptions.getAgent());
+		}
+		
 	}
 }
+
+	

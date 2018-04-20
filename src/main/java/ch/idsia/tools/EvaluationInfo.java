@@ -1,6 +1,6 @@
 package ch.idsia.tools;
 
-import ch.idsia.mario.engine.LevelScene;
+import ch.idsia.ai.tasks.Task;
 import ch.idsia.mario.engine.level.Level;
 import ch.idsia.mario.engine.sprites.Mario;
 import ch.idsia.mario.engine.sprites.Mario.STATUS;
@@ -16,6 +16,7 @@ import java.text.DecimalFormat;
  */
 public class EvaluationInfo
 {
+	private Task task;
     private static final int MagicNumberUndef = -42;
     public Level.LEVEL_TYPES levelType = Level.LEVEL_TYPES.UNKNOWN;
     public STATUS marioStatus = STATUS.UNKNOWN;
@@ -27,6 +28,7 @@ public class EvaluationInfo
     public int levelXExit=MagicNumberUndef;
     public int timeSpentOnLevel = MagicNumberUndef;
     public int totalTimeGiven = MagicNumberUndef;
+    private int exactTimeLeft = MagicNumberUndef;
     public int numberOfGainedCoins = MagicNumberUndef;
     public int totalNumberOfCoins = MagicNumberUndef;
     public int totalActionsPerfomed = MagicNumberUndef;
@@ -49,8 +51,12 @@ public class EvaluationInfo
     private int gainedMushrooms=MagicNumberUndef;
     private int gainedFlower=MagicNumberUndef;
 
+    public EvaluationInfo(Task task) {
+    	this.task=task;
+    }
+    
     public double computeBasicFitness() {
-    	return LevelScene.getScoreBasesOnValues(marioStatus, timeLeft, lengthOfLevelPassedPhys, killsTotal, killedCreaturesbyStomp, killedCreaturesbyShell, killedCreaturesbyFire, numberOfGainedCoins, gainedMushrooms, gainedFlower, timesHurt);
+    	return task.getScoreBasesOnValues(marioStatus, timeLeft, lengthOfLevelPassedPhys, killsTotal, killedCreaturesbyStomp, killedCreaturesbyShell, killedCreaturesbyFire, numberOfGainedCoins, gainedMushrooms, gainedFlower, timesHurt);
     }
 
     public double computeDistancePassed()
@@ -129,6 +135,14 @@ public class EvaluationInfo
 		this.wasHijacked = wasHijacked;
 	}
 
+	public int getExactTimeLeft() {
+		return exactTimeLeft;
+	}
+
+	public void setExactTimeLeft(int exactTimeLeft) {
+		this.exactTimeLeft = exactTimeLeft;
+	}
+
 	@Override
     public String toString()
     {
@@ -136,6 +150,7 @@ public class EvaluationInfo
         String ret = "\n\n			   //////////////\n"; 
         ret +=	    "			   //Statistics//\n";
         ret +=     "			   //////////////";
+        ret += "\n                           Based on : " + task.getName();
         ret += "\n                  Player/Agent type : " + agentType;
         ret += "\n                  Player/Agent name : " + agentName;
         ret += "\n                       Mario Status : " + ((marioStatus == STATUS.WIN) ? "Won" : "Lost");
@@ -148,6 +163,7 @@ public class EvaluationInfo
         ret += "\n                     Passed (Cells) : " + df.format((double)lengthOfLevelPassedCells / levelXExit *100) + "% (" + lengthOfLevelPassedCells + " of " + levelXExit + ")";
         ret += "\n             Time Spent(Fractioned) : " + timeSpentOnLevel + " (" + df.format((double)timeSpentOnLevel/totalTimeGiven*100) + "%)";
         ret += "\n              Time Left(Fractioned) : " + timeLeft + " (" + df.format((double)timeLeft/totalTimeGiven*100) + "%)";
+        ret += "\n                    Exact Time Left : " + exactTimeLeft;
         ret += "\n                   Total time given : " + totalTimeGiven;
         ret += "\n                       Coins Gained : " + numberOfGainedCoins+" ("+numberOfGainedCoins+"/"+totalNumberOfCoins+")";
         ret += "\n                        Total Kills : " + killsTotal;
